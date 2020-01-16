@@ -12,8 +12,26 @@ CRGB leds[NUM_LEDS];
 
 bool sustain_on = false;
 
-void note(byte channel, byte pitch, byte velocity) {
-    Serial.print("note=");
+void note_on(byte channel, byte pitch, byte velocity) {
+    if ((pitch - 21) * 2 < NUM_LEDS) {
+        // MIDI devices should reconise both note_off and note_on with 0 velocity as the same.
+        leds[(pitch - 21) * 2] = velocity ? CRGB::White : CRGB::Black;
+    }
+
+    Serial.print("noteOn=");
+    Serial.print(pitch);
+    Serial.print(", channel=");
+    Serial.print(channel);
+    Serial.print(", velocity=");
+    Serial.println(velocity);
+}
+
+void note_off(byte channel, byte pitch, byte velocity) {
+    if ((pitch - 21) * 2 < NUM_LEDS) {
+        leds[(pitch - 21) * 2] = CRGB::Black;
+    }
+
+    Serial.print("noteOff=");
     Serial.print(pitch);
     Serial.print(", channel=");
     Serial.print(channel);
@@ -87,13 +105,11 @@ void loop() {
     while(rx = MidiUSB.read(), rx.header) {
         switch (rx.header) {
             case 0x9:
-            note(rx.byte1 & 0xF, rx.byte2, rx.byte3);
+            note_on(rx.byte1 & 0xF, rx.byte2, rx.byte3);
+            break;
 
-            if ((rx.byte2 - 21) * 2 >= NUM_LEDS){
-                continue;
-            }
-
-            leds[(rx.byte2 - 21) * 2] = rx.byte3 ? CRGB::White : CRGB::Black;
+            case 0x8:
+            note_off(rx.byte1 & 0xF, rx.byte2, rx.byte3);
             break;
 
             case 0xB:
